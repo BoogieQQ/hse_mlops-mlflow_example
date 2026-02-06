@@ -10,3 +10,4 @@ ipython==8.12.2
 notebook==6.4.10
 traitlets==5.9.0
 setuptools==80.10.1
+category_encoders
