@@ -1,5 +1,6 @@
 import mlflow
 import mlflow.sklearn
+import joblib
 
 import pandas as pd
 import numpy as np
@@ -11,7 +12,7 @@ from datetime import datetime
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
-from constants import DATASET_PATH_PATTERN, MODEL_FILEPATH, RANDOM_STATE, MY_SURNAME, MLFLOW_TRACKING_URL
+from constants import DATASET_PATH_PATTERN, MODEL_FILEPATH, RANDOM_STATE
 from utils import get_logger, load_params
 
 STAGE_NAME = 'train'
@@ -25,10 +26,6 @@ MODEL_CLASSES = {
 def train():
     logger = get_logger(logger_name=STAGE_NAME)
     train_params = load_params(stage_name=STAGE_NAME)
-    logger.info(train_params)
-
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
-    mlflow.set_experiment(f"homework_{MY_SURNAME}")
 
     logger.info('Начали считывать датасеты')
     splits = [None, None, None, None]
@@ -48,42 +45,38 @@ def train():
     
     model = model_class(**model_params)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    mlflow.log_param("model_type", model_type)
+    mlflow.log_param("random_state", RANDOM_STATE)
 
-    with mlflow.start_run(run_name=f"{model_type}_training_{timestamp}") as run:
-        mlflow.log_param("model_type", model_type)
-        mlflow.log_param("random_state", RANDOM_STATE)
-
-        if model_type == 'logreg':
-            logger.info('Для логистической регрессии добавляем StandardScaler')
-            
-            pipeline_steps = [
-                ('scaler', StandardScaler()),
-                ('classifier', model_class(**model_params))
-            ]
-            model = Pipeline(pipeline_steps)
-            
-            mlflow.log_param("has_scaler", True)
-            mlflow.log_param("scaler_type", "StandardScaler")
-        else:
-            model = model_class(**model_params)
-            mlflow.log_param("has_scaler", False)
-            
-        for param_name, param_value in model_params.items():
-            mlflow.log_param(f"model_{param_name}", param_value)
+    if model_type == 'logreg':
+        logger.info('Для логистической регрессии добавляем StandardScaler')
         
-        logger.info('Обучаем модель')
-        model.fit(X_train, y_train)
+        pipeline_steps = [
+            ('scaler', StandardScaler()),
+            ('logreg', model_class(**model_params))
+        ]
+        model = Pipeline(pipeline_steps)
         
-        logger.info('Логируем модель в MLflow')
+        mlflow.log_param("has_scaler", True)
+        mlflow.log_param("scaler_type", "StandardScaler")
+    else:
+        model = model_class(**model_params)
+        mlflow.log_param("has_scaler", False)
         
-        mlflow.sklearn.log_model(model, "model")
-        
-        logger.info('Сохраняем модель')
-        import joblib
-        joblib.dump(model, MODEL_FILEPATH)
-        
-        logger.info(f'Успешно!')
+    for param_name, param_value in model_params.items():
+        mlflow.log_param(f"model_{param_name}", param_value)
+    
+    logger.info('Обучаем модель')
+    model.fit(X_train, y_train)
+    
+    logger.info('Логируем модель в MLflow')
+    
+    mlflow.sklearn.log_model(model, "model")
+    
+    logger.info('Сохраняем модель')
+    joblib.dump(model, MODEL_FILEPATH)
+    
+    logger.info(f'Успешно!')
 
 if __name__ == '__main__':
     train()

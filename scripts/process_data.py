@@ -8,7 +8,7 @@ from datasets import load_dataset
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from category_encoders import TargetEncoder
-from constants import MY_SURNAME, MLFLOW_TRACKING_URL, DATASET_NAME, DATASET_PATH_PATTERN, TEST_SIZE, RANDOM_STATE
+from constants import DATASET_NAME, DATASET_PATH_PATTERN, RANDOM_STATE
 from utils import get_logger, load_params
 from datetime import datetime
 
@@ -26,13 +26,10 @@ def process_data():
     logger = get_logger(logger_name=STAGE_NAME)
     process_data_params = load_params(stage_name=STAGE_NAME)
 
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
-    mlflow.set_experiment(f"homework_{MY_SURNAME}")
-
     if process_data_params['use_saved_data']:
         logger.info(f'Используются ранее собранные данные. {STAGE_NAME} стадия пропущена.')
         return
-        
+
     logger.info('Начали скачивать данные')
     dataset = load_dataset(DATASET_NAME)
     logger.info('Успешно скачали данные!')
@@ -60,7 +57,7 @@ def process_data():
     X_transformed = np.hstack([X[num_features], X_cat_prep])
     
     X_train, X_test, y_train, y_test = train_test_split(
-        X_transformed, y_transformed, test_size=TEST_SIZE, random_state=RANDOM_STATE
+        X_transformed, y_transformed, test_size=process_data_params['test_size'], random_state=RANDOM_STATE
     )
 
     n = len(X_train)
@@ -77,28 +74,30 @@ def process_data():
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
-    with mlflow.start_run(run_name=f"data_processing_{timestamp}"):
-        mlflow.log_param("dataset_name", process_data_params['dataset'])
-        mlflow.log_param("features", train_columns)
-        mlflow.log_param("train_size_original", n)
-        mlflow.log_param("train_subsample_size", len(y_train))
-        mlflow.log_param("test_size", len(y_test))
-        mlflow.log_param("categorical_features", cat_features)
-        mlflow.log_param("numerical_features", num_features)
-        mlflow.log_param("ignore_features", ignore_features)
-        mlflow.log_param("cat_encoder", cat_encoder_name)
-        mlflow.log_param("target_distribution_train", y_train.value_counts().to_dict())
-        mlflow.log_param("target_distribution_test", y_test.value_counts().to_dict())
-    
+    mlflow.log_param("dataset_name", process_data_params['dataset'])
+    mlflow.log_param("features", train_columns)
+    mlflow.log_param("train_size_original", n)
+    mlflow.log_param("train_subsample_size", len(y_train))
+    mlflow.log_param("test_size", len(y_test))
+    mlflow.log_param("categorical_features", cat_features)
+    mlflow.log_param("numerical_features", num_features)
+    mlflow.log_param("ignore_features", ignore_features)
+    mlflow.log_param("cat_encoder", cat_encoder_name)
+    mlflow.log_param("target_distribution_train", y_train.value_counts().to_dict())
+    mlflow.log_param("target_distribution_test", y_test.value_counts().to_dict())
+
     logger.info('Начали сохранять датасеты')
     os.makedirs(os.path.dirname(DATASET_PATH_PATTERN), exist_ok=True)
     for split, split_name in zip(
         (X_train, X_test, y_train, y_test),
         ('X_train', 'X_test', 'y_train', 'y_test'),
     ):
+        dataset_path = DATASET_PATH_PATTERN.format(split_name=split_name)
         pd.DataFrame(split).to_csv(
-            DATASET_PATH_PATTERN.format(split_name=split_name), index=False
+            dataset_path, index=False
         )
+        mlflow.log_artifact(dataset_path, "data_artifacts")
+
     logger.info('Успешно сохранили датасеты!')
 
 
