@@ -1,5 +1,17 @@
 params:
   metrics:
-      - accuracy
-      - f1
-      - roc_auc
+    - accuracy
+    - f1
+    - roc_auc
+    - precision
+    - recall
+    - average_precision
+  artifacts:
+    - classification_report
+    - confusion_matrix
+    - feature_importances
+    - model_errors
+    - pr_curve
+  thresholds:
+    classification: 0.5
+    pr_curve_steps: 100

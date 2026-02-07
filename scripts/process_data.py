@@ -10,13 +10,14 @@ from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from category_encoders import TargetEncoder
 from constants import MY_SURNAME, MLFLOW_TRACKING_URL, DATASET_NAME, DATASET_PATH_PATTERN, TEST_SIZE, RANDOM_STATE
 from utils import get_logger, load_params
+from datetime import datetime
 
 np.random.seed(RANDOM_STATE)
 
 STAGE_NAME = 'process_data'
 
 CAT_ENCODERS = {
-    'ohe': OneHotEncoder(sparse_output=False),
+    'ohe': OneHotEncoder(drop='first', sparse_output=False),
     'ordial': OrdinalEncoder(),
     'target': TargetEncoder()
 }
@@ -27,7 +28,11 @@ def process_data():
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URL)
     mlflow.set_experiment(f"homework_{MY_SURNAME}")
-    
+
+    if process_data_params['use_saved_data']:
+        logger.info(f'Используются ранее собранные данные. {STAGE_NAME} стадия пропущена.')
+        return
+        
     logger.info('Начали скачивать данные')
     dataset = load_dataset(DATASET_NAME)
     logger.info('Успешно скачали данные!')
@@ -70,7 +75,9 @@ def process_data():
     logger.info(f'    Размер тренировочного датасета: {len(y_train)}')
     logger.info(f'    Размер тестового датасета: {len(y_test)}')
 
-    with mlflow.start_run(run_name="data_processing"):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+
+    with mlflow.start_run(run_name=f"data_processing_{timestamp}"):
         mlflow.log_param("dataset_name", process_data_params['dataset'])
         mlflow.log_param("features", train_columns)
         mlflow.log_param("train_size_original", n)

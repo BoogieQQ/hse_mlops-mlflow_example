@@ -1,5 +1,6 @@
 params:
   dataset: scikit-learn/adult-census-income
+  use_saved_data: true
   test_size: 0.25
   subsample_train_size: 1.0
   columns:
@@ -23,4 +24,4 @@ params:
     target:
       - income
   preprocess:
-    cat_encoder: target # ohe, ordial, target
+    cat_encoder: ordial # ohe, ordial, target
