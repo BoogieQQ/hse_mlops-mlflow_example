@@ -1,9 +1,27 @@
 params:
-  features:
-    - race
-    - sex
-    - native.country
-    - occupation
-    - education
-    - capital.gain
-  train_size: 1000
+  dataset: scikit-learn/adult-census-income
+  use_saved_data: false
+  test_size: 0.3
+  subsample_train_size: 1.0
+  columns:
+    num_features:
+      - age
+      - fnlwgt
+      - education.num
+      - capital.gain
+      - capital.loss
+      - hours.per.week
+    cat_features:
+      - workclass
+      - education
+      - marital.status
+      - occupation
+      - relationship
+      - race
+      - sex
+      - native.country
+    ignore_features:
+    target:
+      - income
+  preprocess:
+    cat_encoder: ohe # ohe, ordial, target
